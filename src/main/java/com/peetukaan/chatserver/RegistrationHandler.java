@@ -6,15 +6,17 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.stream.Collectors;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 
-public class ChatHandler implements HttpHandler {
+public class RegistrationHandler implements HttpHandler {
+    ChatAuthenticator authenticator;
 
-    private ArrayList<String> messages = new ArrayList<String>();
+    public RegistrationHandler(ChatAuthenticator chatAuthenticator) {
+        authenticator = chatAuthenticator;
+    }
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -23,37 +25,27 @@ public class ChatHandler implements HttpHandler {
             InputStream iStream = exchange.getRequestBody();
             String text = new BufferedReader(new InputStreamReader(iStream,StandardCharsets.UTF_8))
             .lines()
-            .collect(Collectors.joining("\n"));
-       
-            if (text.isEmpty()) {
-                String message = "Empty message";
+            .collect(Collectors.joining());
+
+            String[] pieces = text.split(":");
+            boolean validUser = authenticator.addUser(pieces[0], pieces[1]);
+            if (validUser == false) {
+                iStream.close();
+                String message = "Invalid username or username already taken";
                 byte [] bytes = message.getBytes("UTF-8");
-                exchange.sendResponseHeaders(406, bytes.length);
+                exchange.sendResponseHeaders(405, bytes.length);
                 OutputStream oStream = exchange.getResponseBody();
                 oStream.write(message.getBytes());
             } else {
-                messages.add(text);
+                iStream.close();
+                exchange.sendResponseHeaders(200, -1);
             }
-            iStream.close();
-            exchange.sendResponseHeaders(200, -1);
-        }
-        else if (exchange.getRequestMethod().equalsIgnoreCase("GET")) {
-            String messageBody = "";
-            for (String message : messages) {
-                messageBody = messageBody + message + "\n";
-            }            
-            byte [] bytes = messageBody.getBytes("UTF-8");
-            exchange.sendResponseHeaders(200, bytes.length);
-            OutputStream oStream = exchange.getResponseBody();
-            oStream.write(messageBody.getBytes());
-            oStream.close();
-        }
-        else {
+        } else {
             String message = "Not supported";
             byte [] bytes = message.getBytes("UTF-8");
             exchange.sendResponseHeaders(404, bytes.length);
             OutputStream oStream = exchange.getResponseBody();
             oStream.write(message.getBytes());
-        }        
+        }   
     }
 }
