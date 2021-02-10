@@ -36,6 +36,7 @@ public class ChatServer
             context.setAuthenticator(authenticator);
             server.setExecutor(null);
             server.start();
+            System.out.println("Server running!");
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }

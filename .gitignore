@@ -1,5 +1,5 @@
 .project
-.classpath
 /target
 /.vscode
 /.settings
+chatDatabase

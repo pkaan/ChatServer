@@ -6,14 +6,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.stream.Collectors;
 
 import com.sun.net.httpserver.Headers;
@@ -26,7 +21,8 @@ import org.json.JSONObject;
 
 public class ChatHandler implements HttpHandler {
 
-    private ArrayList<ChatMessage> messages = new ArrayList<ChatMessage>();
+    ChatDatabase database = ChatDatabase.getInstance();
+
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -69,20 +65,17 @@ public class ChatHandler implements HttpHandler {
                             String sent = msg.getString("sent");
                             OffsetDateTime odt = OffsetDateTime.parse(sent);
                             LocalDateTime now = odt.toLocalDateTime();
+                            ChatMessage newMessage = new ChatMessage(now, user, message);
+                            long unix = newMessage.dateAsInt();
                             try {
-                                messages.add(new ChatMessage(now, user, message));
+                                database.addMessage(newMessage.getNick(), newMessage.getMessage(), unix);
                             } catch (Exception e) {
-                                String error = "User authentication missing!";
+                                String error = "Could not store message to the database!";
                                 byte [] bytes = error.getBytes("UTF-8");
                                 exchange.sendResponseHeaders(401, bytes.length);
                                 OutputStream oStream = exchange.getResponseBody();
                                 oStream.write(error.getBytes());
-                            }
-                            Collections.sort(messages, new Comparator<ChatMessage>() {
-                                @Override
-                                public int compare(ChatMessage lhs, ChatMessage rhs) {
-                                return rhs.getSent().compareTo(lhs.getSent());}
-                                });                           
+                            }              
                             String response = "Message sent!";
                             byte [] bytes = response.getBytes("UTF-8");
                             exchange.sendResponseHeaders(200, bytes.length);
@@ -106,28 +99,12 @@ public class ChatHandler implements HttpHandler {
                 }
             } else if (exchange.getRequestMethod().equalsIgnoreCase("GET")) {
                 try {
-                    JSONArray objs = new JSONArray();
-                    for (ChatMessage message : messages) {
-                        JSONObject obj = new JSONObject();
-                        ZonedDateTime toSend = ZonedDateTime.of(message.getSent(), ZoneId.of("UTC"));
-                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
-                        String dateText = toSend.format(formatter);
-                        obj.put("sent", dateText);
-                        obj.put("user", message.getNick());
-                        obj.put("message", message.getMessage());
-                        objs.put(obj);
-                    }            
-                    String messageBody = "";
-                    for (int i = 0; i < objs.length(); i++) {
-                        String sent = objs.getJSONObject(i).getString("sent");
-                        String nick = objs.getJSONObject(i).getString("user");
-                        String message = objs.getJSONObject(i).getString("message");
-                        messageBody = messageBody + "(" + sent + ") <" + nick + "> " + message + "\n";
-                    }            
-                    byte [] bytes = messageBody.getBytes("UTF-8");
+                    JSONArray objs = database.getMessages();       
+                    String messageBody3 = objs.toString();
+                    byte [] bytes = messageBody3.getBytes("UTF-8");
                     exchange.sendResponseHeaders(200, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
-                    oStream.write(messageBody.getBytes());
+                    oStream.write(messageBody3.getBytes());
                     oStream.close();
                 } catch (JSONException e) {
                     String message = e.getMessage();
@@ -136,7 +113,14 @@ public class ChatHandler implements HttpHandler {
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
                     oStream.close();
-                }
+                } catch (SQLException e) {
+                    String message = e.getMessage();
+                    byte [] bytes = message.getBytes("UTF-8");
+                    exchange.sendResponseHeaders(400, bytes.length);
+                    OutputStream oStream = exchange.getResponseBody();
+                    oStream.write(message.getBytes());
+                    oStream.close();
+				}
             }
             else {
                 String message = "Not supported";

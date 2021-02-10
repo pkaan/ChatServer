@@ -1,7 +1,20 @@
 Student: Peetu Kaan - Student Number: 2307280 - Email: aripeetu.kaan@gmail.com 
 
-Excercise 1: done.
+to compile:
 
-Excercise 2: done.
+> mvn assembly:assembly -DdescriptorId=jar-with-dependencies
+> java -cp target/chatserver-1.0-SNAPSHOT-jar-with-dependencies.jar com.peetukaan.chatserver.ChatServer
 
-Excercise 3: done.
+
+Exercise 1: done.
+
+Exercise 2: done.
+
+Exercise 3: done.
+
+Exercise 4: done.
+--refactored
+--database support
+--fixed jsonArray when returning(GET) the messages
+--Implemented some missing requirements
+--/register, /get & sending the messages working using the chatClient

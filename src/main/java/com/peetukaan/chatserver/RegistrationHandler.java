@@ -91,7 +91,6 @@ public class RegistrationHandler implements HttpHandler {
                         OutputStream oStream = exchange.getResponseBody();
                         oStream.write(message.getBytes());
                     }
-                    
                 } else {
                     String message = "Not supported format";
                     byte [] bytes = message.getBytes("UTF-8");
