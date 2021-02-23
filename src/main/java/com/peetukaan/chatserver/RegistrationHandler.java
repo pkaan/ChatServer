@@ -24,6 +24,7 @@ public class RegistrationHandler implements HttpHandler {
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
+        System.out.println("Request handled in thread " + Thread.currentThread().getId());
         try {
             if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {
                 Headers headers = exchange.getRequestHeaders();

@@ -32,11 +32,11 @@ public class ChatDatabase {
     }
 
     private ChatDatabase() {
-        try {
-            open("chatDatabase.db");
-        } catch (SQLException e) {
-            System.out.println("Log - SQLexception");
-        }
+        // try {
+        // open("chatDatabase.db");
+        // } catch (SQLException e) {
+        // System.out.println("Log - SQLexception");
+        // }
     }
 
     public void open(String dbName) throws SQLException {
@@ -211,5 +211,13 @@ public class ChatDatabase {
         } catch (SQLException e) {
         }
         return objs;
+    }
+
+    public void close() {
+        try {
+            database.close();
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
     }
 }
