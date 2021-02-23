@@ -23,7 +23,7 @@ public class ChatMessage {
     public void setSent(long epoch) {
         sent = LocalDateTime.ofInstant(Instant.ofEpochMilli(epoch), ZoneOffset.UTC);
     }
-    
+
     public LocalDateTime getSent() {
         return this.sent;
     }

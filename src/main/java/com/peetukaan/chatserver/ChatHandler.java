@@ -9,6 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
 import com.sun.net.httpserver.Headers;
@@ -23,12 +26,11 @@ public class ChatHandler implements HttpHandler {
 
     ChatDatabase database = ChatDatabase.getInstance();
 
-
     @Override
     public void handle(HttpExchange exchange) throws IOException {
 
         try {
-            if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {  
+            if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {
                 Headers headers = exchange.getRequestHeaders();
                 int contentLength = 0;
                 String contentType = "";
@@ -36,7 +38,7 @@ public class ChatHandler implements HttpHandler {
                     contentLength = Integer.parseInt(headers.get("Content-Length").get(0));
                 } else {
                     String message = "No content length";
-                    byte [] bytes = message.getBytes("UTF-8");
+                    byte[] bytes = message.getBytes("UTF-8");
                     exchange.sendResponseHeaders(411, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
@@ -45,16 +47,15 @@ public class ChatHandler implements HttpHandler {
                     contentType = headers.get("Content-Type").get(0);
                 } else {
                     String message = "Content type missing";
-                    byte [] bytes = message.getBytes("UTF-8");
+                    byte[] bytes = message.getBytes("UTF-8");
                     exchange.sendResponseHeaders(406, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
                 }
                 if (contentType.equalsIgnoreCase("application/json")) {
                     InputStream iStream = exchange.getRequestBody();
-                    String text = new BufferedReader(new InputStreamReader(iStream,StandardCharsets.UTF_8))
-                    .lines()
-                    .collect(Collectors.joining("\n"));
+                    String text = new BufferedReader(new InputStreamReader(iStream, StandardCharsets.UTF_8)).lines()
+                            .collect(Collectors.joining("\n"));
 
                     if (text.trim().length() > 0) {
                         try {
@@ -71,19 +72,19 @@ public class ChatHandler implements HttpHandler {
                                 database.addMessage(newMessage.getNick(), newMessage.getMessage(), unix);
                             } catch (Exception e) {
                                 String error = "Could not store message to the database!";
-                                byte [] bytes = error.getBytes("UTF-8");
+                                byte[] bytes = error.getBytes("UTF-8");
                                 exchange.sendResponseHeaders(401, bytes.length);
                                 OutputStream oStream = exchange.getResponseBody();
                                 oStream.write(error.getBytes());
-                            }              
+                            }
                             String response = "Message sent!";
-                            byte [] bytes = response.getBytes("UTF-8");
+                            byte[] bytes = response.getBytes("UTF-8");
                             exchange.sendResponseHeaders(200, bytes.length);
                             OutputStream oStream = exchange.getResponseBody();
                             oStream.write(response.getBytes());
                         } catch (JSONException e) {
                             String message = "Error";
-                            byte [] bytes = message.getBytes("UTF-8");
+                            byte[] bytes = message.getBytes("UTF-8");
                             exchange.sendResponseHeaders(406, bytes.length);
                             OutputStream oStream = exchange.getResponseBody();
                             oStream.write(message.getBytes());
@@ -91,50 +92,78 @@ public class ChatHandler implements HttpHandler {
                     } else {
                         iStream.close();
                         String message = "Empty message";
-                        byte [] bytes = message.getBytes("UTF-8");
+                        byte[] bytes = message.getBytes("UTF-8");
                         exchange.sendResponseHeaders(406, bytes.length);
                         OutputStream oStream = exchange.getResponseBody();
                         oStream.write(message.getBytes());
                     }
                 }
             } else if (exchange.getRequestMethod().equalsIgnoreCase("GET")) {
+                Headers headers = exchange.getRequestHeaders();
                 try {
-                    JSONArray objs = database.getMessages();       
-                    String messageBody3 = objs.toString();
-                    byte [] bytes = messageBody3.getBytes("UTF-8");
-                    exchange.sendResponseHeaders(200, bytes.length);
-                    OutputStream oStream = exchange.getResponseBody();
-                    oStream.write(messageBody3.getBytes());
-                    oStream.close();
+                    if (headers.containsKey("If-Modified-Since")) {
+                        String time = headers.get("If-Modified-Since").get(0);
+                        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss.SSS zzz");
+                        ZonedDateTime modified = ZonedDateTime.parse(time, formatter);
+                        LocalDateTime fromWhichModified = modified.toLocalDateTime();
+                        long messagesSince = -1;
+                        messagesSince = fromWhichModified.toInstant(ZoneOffset.UTC).toEpochMilli();
+                        JSONArray objs = database.getMessages(messagesSince);
+
+                        if (objs.isEmpty()) {
+                            String error = "No new messages!";
+                            byte[] bytes = error.getBytes("UTF-8");
+                            exchange.sendResponseHeaders(204, bytes.length);
+                            OutputStream oStream = exchange.getResponseBody();
+                            oStream.write(error.getBytes());
+                        }
+                        String messageBody3 = objs.toString();
+                        byte[] bytes = messageBody3.getBytes("UTF-8");
+                        String headerDateText = database.getHeaderDate();
+                        exchange.getResponseHeaders().add("Last-Modified", headerDateText);
+                        exchange.sendResponseHeaders(200, bytes.length);
+                        OutputStream oStream = exchange.getResponseBody();
+                        oStream.write(messageBody3.getBytes());
+                        oStream.close();
+                    } else {
+                        JSONArray objs = database.getMessages();
+                        String messageBody3 = objs.toString();
+                        byte[] bytes = messageBody3.getBytes("UTF-8");
+                        String headerDateText = database.getHeaderDate();
+                        exchange.getResponseHeaders().add("Last-Modified", headerDateText);
+                        exchange.sendResponseHeaders(200, bytes.length);
+                        OutputStream oStream = exchange.getResponseBody();
+                        oStream.write(messageBody3.getBytes());
+                        oStream.close();
+                    }
                 } catch (JSONException e) {
                     String message = e.getMessage();
-                    byte [] bytes = message.getBytes("UTF-8");
+                    byte[] bytes = message.getBytes("UTF-8");
                     exchange.sendResponseHeaders(400, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
                     oStream.close();
                 } catch (SQLException e) {
                     String message = e.getMessage();
-                    byte [] bytes = message.getBytes("UTF-8");
+                    byte[] bytes = message.getBytes("UTF-8");
                     exchange.sendResponseHeaders(400, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
                     oStream.close();
-				}
-            }
-            else {
+                }
+            } else {
                 String message = "Not supported";
-                byte [] bytes = message.getBytes("UTF-8");
+                byte[] bytes = message.getBytes("UTF-8");
                 exchange.sendResponseHeaders(404, bytes.length);
                 OutputStream oStream = exchange.getResponseBody();
                 oStream.write(message.getBytes());
             }
         } catch (IOException e) {
             String message = e.getMessage();
-            byte [] bytes = message.getBytes("UTF-8");
+            byte[] bytes = message.getBytes("UTF-8");
             exchange.sendResponseHeaders(400, bytes.length);
             OutputStream oStream = exchange.getResponseBody();
             oStream.write(message.getBytes());
-        }      
+        }
     }
 }

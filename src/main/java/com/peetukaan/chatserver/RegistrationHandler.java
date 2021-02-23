@@ -25,16 +25,16 @@ public class RegistrationHandler implements HttpHandler {
     @Override
     public void handle(HttpExchange exchange) throws IOException {
         try {
-            if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {  
+            if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {
                 Headers headers = exchange.getRequestHeaders();
                 int contentLength = 0;
                 String contentType = "";
-    
+
                 if (headers.containsKey("Content-Length")) {
                     contentLength = Integer.parseInt(headers.get("Content-Length").get(0));
                 } else {
                     String message = "No content length";
-                    byte [] bytes = message.getBytes("UTF-8");
+                    byte[] bytes = message.getBytes("UTF-8");
                     exchange.sendResponseHeaders(411, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
@@ -43,7 +43,7 @@ public class RegistrationHandler implements HttpHandler {
                     contentType = headers.get("Content-Type").get(0);
                 } else {
                     String message = "Content type missing";
-                    byte [] bytes = message.getBytes("UTF-8");
+                    byte[] bytes = message.getBytes("UTF-8");
                     exchange.sendResponseHeaders(406, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
@@ -51,10 +51,9 @@ public class RegistrationHandler implements HttpHandler {
                 if (contentType.equalsIgnoreCase("application/json")) {
                     try {
                         InputStream iStream = exchange.getRequestBody();
-                        String text = new BufferedReader(new InputStreamReader(iStream,StandardCharsets.UTF_8))
-                        .lines()
-                        .collect(Collectors.joining("\n"));
-    
+                        String text = new BufferedReader(new InputStreamReader(iStream, StandardCharsets.UTF_8)).lines()
+                                .collect(Collectors.joining("\n"));
+
                         if (text.trim().length() > 0) {
                             JSONObject registrationMsg = new JSONObject(text);
                             String username = registrationMsg.getString("username");
@@ -64,14 +63,14 @@ public class RegistrationHandler implements HttpHandler {
                             if (validUser == false) {
                                 iStream.close();
                                 String message = "Invalid username or username already taken";
-                                byte [] bytes = message.getBytes("UTF-8");
+                                byte[] bytes = message.getBytes("UTF-8");
                                 exchange.sendResponseHeaders(405, bytes.length);
                                 OutputStream oStream = exchange.getResponseBody();
                                 oStream.write(message.getBytes());
                             } else {
                                 iStream.close();
                                 String message = "Registration success!";
-                                byte [] bytes = message.getBytes("UTF-8");
+                                byte[] bytes = message.getBytes("UTF-8");
                                 exchange.sendResponseHeaders(200, bytes.length);
                                 OutputStream oStream = exchange.getResponseBody();
                                 oStream.write(message.getBytes());
@@ -79,38 +78,38 @@ public class RegistrationHandler implements HttpHandler {
                         } else {
                             iStream.close();
                             String message = "Content missing";
-                            byte [] bytes = message.getBytes("UTF-8");
+                            byte[] bytes = message.getBytes("UTF-8");
                             exchange.sendResponseHeaders(405, bytes.length);
                             OutputStream oStream = exchange.getResponseBody();
                             oStream.write(message.getBytes());
                         }
                     } catch (JSONException e) {
                         String message = "Invalid json-file";
-                        byte [] bytes = message.getBytes("UTF-8");
+                        byte[] bytes = message.getBytes("UTF-8");
                         exchange.sendResponseHeaders(406, bytes.length);
                         OutputStream oStream = exchange.getResponseBody();
                         oStream.write(message.getBytes());
                     }
                 } else {
                     String message = "Not supported format";
-                    byte [] bytes = message.getBytes("UTF-8");
+                    byte[] bytes = message.getBytes("UTF-8");
                     exchange.sendResponseHeaders(406, bytes.length);
                     OutputStream oStream = exchange.getResponseBody();
                     oStream.write(message.getBytes());
                 }
             } else {
                 String message = "Not supported";
-                byte [] bytes = message.getBytes("UTF-8");
+                byte[] bytes = message.getBytes("UTF-8");
                 exchange.sendResponseHeaders(400, bytes.length);
                 OutputStream oStream = exchange.getResponseBody();
                 oStream.write(message.getBytes());
-            }   
+            }
         } catch (IOException e) {
             String message = e.getMessage();
-            byte [] bytes = message.getBytes("UTF-8");
+            byte[] bytes = message.getBytes("UTF-8");
             exchange.sendResponseHeaders(400, bytes.length);
             OutputStream oStream = exchange.getResponseBody();
             oStream.write(message.getBytes());
-        }    
+        }
     }
 }

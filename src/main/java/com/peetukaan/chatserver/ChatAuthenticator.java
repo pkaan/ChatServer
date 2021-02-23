@@ -2,7 +2,6 @@ package com.peetukaan.chatserver;
 
 import java.sql.SQLException;
 
-
 public class ChatAuthenticator extends com.sun.net.httpserver.BasicAuthenticator {
 
     ChatDatabase database = ChatDatabase.getInstance();
@@ -29,8 +28,7 @@ public class ChatAuthenticator extends com.sun.net.httpserver.BasicAuthenticator
             if (userExists == false) {
                 database.addUser(newUser.getName(), newUser.getPassword(), newUser.getEmail());
                 return true;
-            }
-            else {
+            } else {
                 return false;
             }
         } catch (SQLException e) {

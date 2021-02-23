@@ -15,18 +15,17 @@ import com.sun.net.httpserver.HttpsParameters;
 import com.sun.net.httpserver.HttpContext;
 import com.sun.net.httpserver.HttpsConfigurator;
 
-public class ChatServer 
-{
-    public static void main( String[] args ) throws Exception {
+public class ChatServer {
+    public static void main(String[] args) throws Exception {
         try {
             HttpsServer server = HttpsServer.create(new InetSocketAddress(8001), 0);
             SSLContext sslContext = chatServerSSLContext();
-            server.setHttpsConfigurator (new HttpsConfigurator(sslContext) {
-                public void configure (HttpsParameters params) {
-                InetSocketAddress remote = params.getClientAddress();
-                SSLContext c = getSSLContext();
-                SSLParameters sslparams = c.getDefaultSSLParameters();
-                params.setSSLParameters(sslparams);
+            server.setHttpsConfigurator(new HttpsConfigurator(sslContext) {
+                public void configure(HttpsParameters params) {
+                    InetSocketAddress remote = params.getClientAddress();
+                    SSLContext c = getSSLContext();
+                    SSLParameters sslparams = c.getDefaultSSLParameters();
+                    params.setSSLParameters(sslparams);
                 }
             });
             ChatAuthenticator authenticator = new ChatAuthenticator("/chat");
