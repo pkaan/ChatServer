@@ -4,7 +4,7 @@ Student: Peetu Kaan - Student Number: 2307280 - Email: aripeetu.kaan@gmail.com
 
 
 Compile and start with 3 parameters:
-	1. database file (if already exists, default database will be created if not)
+	1. database file (database will be created if does not exist)
 	2. certificate file (has to exist)
 	3. certificate password
 
