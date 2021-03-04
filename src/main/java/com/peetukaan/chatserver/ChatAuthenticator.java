@@ -1,7 +1,5 @@
 package com.peetukaan.chatserver;
 
-import java.sql.SQLException;
-
 public class ChatAuthenticator extends com.sun.net.httpserver.BasicAuthenticator {
 
     ChatDatabase database = ChatDatabase.getInstance();
@@ -10,29 +8,25 @@ public class ChatAuthenticator extends com.sun.net.httpserver.BasicAuthenticator
         super(realm);
     }
 
+    // Checking if the username & the password match
     @Override
     public boolean checkCredentials(String username, String password) {
-        boolean credentials;
-        try {
-            credentials = database.checkUser(username, password);
-        } catch (SQLException e) {
-            return false;
-        }
-        return credentials;
+        boolean validCredentials;
+        validCredentials = database.checkUsernamePassword(username, password);
+        return validCredentials;
     }
 
-    public boolean addUser(String username, String password, String email) {
-        try {
-            User newUser = new User(username, password, email);
-            boolean userExists = database.checkUsername(username);
-            if (userExists == false) {
-                database.addUser(newUser.getName(), newUser.getPassword(), newUser.getEmail());
-                return true;
-            } else {
-                return false;
-            }
-        } catch (SQLException e) {
-            return false;
-        }
+    // Adding user to the database;
+    public void addUser(String username, String password, String email) {
+        User newUser = new User(username, password, email);
+        database.addUser(newUser.getName(), newUser.getPassword(), newUser.getEmail());
     }
+
+    // checking if the username is already taken
+    public boolean checkUser(String username, String password, String email) {
+        boolean UsernameTaken = false;
+        UsernameTaken = database.checkIfUserExists(username);
+        return UsernameTaken;
+    }
+
 }

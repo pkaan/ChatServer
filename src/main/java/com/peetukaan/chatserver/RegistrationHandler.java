@@ -23,94 +23,113 @@ public class RegistrationHandler implements HttpHandler {
     }
 
     @Override
-    public void handle(HttpExchange exchange) throws IOException {
-        System.out.println("Request handled in thread " + Thread.currentThread().getId());
-        try {
+    public void handle(HttpExchange exchange) {
+        // Initializing the response, code and the content(response bytes) to be sent.
+        // Default values
+        String response = "Bad Request";
+        Integer code = 400;
+        register: try {
+            // Request must be only POST
             if (exchange.getRequestMethod().equalsIgnoreCase("POST")) {
                 Headers headers = exchange.getRequestHeaders();
                 int contentLength = 0;
-                String contentType = "";
-
+                String contentType = null;
+                // Headers must contain a Content-Length
                 if (headers.containsKey("Content-Length")) {
                     contentLength = Integer.parseInt(headers.get("Content-Length").get(0));
+                    // Limit of the post is 280 characters
+                    if (contentLength > 280) {
+                        response = "Post limit is 280 characters";
+                        code = 406;
+                        break register;
+                    }
                 } else {
-                    String message = "No content length";
-                    byte[] bytes = message.getBytes("UTF-8");
-                    exchange.sendResponseHeaders(411, bytes.length);
-                    OutputStream oStream = exchange.getResponseBody();
-                    oStream.write(message.getBytes());
+                    response = "No content length";
+                    code = 411;
+                    break register;
                 }
+                // Headers must contain a Content-Type
                 if (headers.containsKey("Content-Type")) {
                     contentType = headers.get("Content-Type").get(0);
                 } else {
-                    String message = "Content type missing";
-                    byte[] bytes = message.getBytes("UTF-8");
-                    exchange.sendResponseHeaders(406, bytes.length);
-                    OutputStream oStream = exchange.getResponseBody();
-                    oStream.write(message.getBytes());
+                    response = "Content type missing";
+                    code = 406;
+                    break register;
                 }
+                // Content-Type must be application/json
                 if (contentType.equalsIgnoreCase("application/json")) {
                     try {
                         InputStream iStream = exchange.getRequestBody();
                         String text = new BufferedReader(new InputStreamReader(iStream, StandardCharsets.UTF_8)).lines()
                                 .collect(Collectors.joining("\n"));
-
+                        // No empty text allowed
                         if (text.trim().length() > 0) {
+                            // Username & password has not yet been checked -> False
+                            boolean userNameTaken = false;
+                            // Parsing a new JSONObject
                             JSONObject registrationMsg = new JSONObject(text);
                             String username = registrationMsg.getString("username");
                             String password = registrationMsg.getString("password");
                             String email = registrationMsg.getString("email");
-                            boolean validUser = authenticator.addUser(username, password, email);
-                            if (validUser == false) {
-                                iStream.close();
-                                String message = "Invalid username or username already taken";
-                                byte[] bytes = message.getBytes("UTF-8");
-                                exchange.sendResponseHeaders(405, bytes.length);
-                                OutputStream oStream = exchange.getResponseBody();
-                                oStream.write(message.getBytes());
+                            // Registering the user to the database if the content is not empty
+                            // (// && email.contains("@") will fail the chat-client tests)
+                            if (username.isBlank() == false && password.isBlank() == false && email.isBlank() == false
+                                    && username.length() > 1 && password.length() > 3
+                                    && email.length() > 5) {
+                                userNameTaken = authenticator.checkUser(username, password, email);
+                                if (userNameTaken == true) {
+                                    iStream.close();
+                                    response = "Invalid credentials or username already taken";
+                                    code = 405;
+                                    break register;
+                                    // validUser (True)
+                                } else if (userNameTaken == false) {
+                                    authenticator.addUser(username, password, email);
+                                    iStream.close();
+                                    response = "Registration success!";
+                                    code = 200;
+                                    break register;
+                                }
                             } else {
                                 iStream.close();
-                                String message = "Registration success!";
-                                byte[] bytes = message.getBytes("UTF-8");
-                                exchange.sendResponseHeaders(200, bytes.length);
-                                OutputStream oStream = exchange.getResponseBody();
-                                oStream.write(message.getBytes());
+                                response = "Username, password or email not provided correctly. Check ReadMe.";
+                                code = 403;
+                                break register;
                             }
                         } else {
                             iStream.close();
-                            String message = "Content missing";
-                            byte[] bytes = message.getBytes("UTF-8");
-                            exchange.sendResponseHeaders(405, bytes.length);
-                            OutputStream oStream = exchange.getResponseBody();
-                            oStream.write(message.getBytes());
+                            response = "JSON empty";
+                            code = 406;
+                            break register;
                         }
                     } catch (JSONException e) {
-                        String message = "Invalid json-file";
-                        byte[] bytes = message.getBytes("UTF-8");
-                        exchange.sendResponseHeaders(406, bytes.length);
-                        OutputStream oStream = exchange.getResponseBody();
-                        oStream.write(message.getBytes());
+                        response = "Cannot parse JSON";
+                        code = 400;
+                        break register;
                     }
                 } else {
-                    String message = "Not supported format";
-                    byte[] bytes = message.getBytes("UTF-8");
-                    exchange.sendResponseHeaders(406, bytes.length);
-                    OutputStream oStream = exchange.getResponseBody();
-                    oStream.write(message.getBytes());
+                    response = "Not supported Content-Type";
+                    code = 415;
+                    break register;
                 }
             } else {
-                String message = "Not supported";
-                byte[] bytes = message.getBytes("UTF-8");
-                exchange.sendResponseHeaders(400, bytes.length);
-                OutputStream oStream = exchange.getResponseBody();
-                oStream.write(message.getBytes());
+                response = "Not supported";
+                code = 404;
+                break register;
             }
         } catch (IOException e) {
-            String message = e.getMessage();
-            byte[] bytes = message.getBytes("UTF-8");
-            exchange.sendResponseHeaders(400, bytes.length);
+            break register;
+        }
+        // Sending the response to the client
+        // Code and response will vary
+        try {
+            byte[] bytes = response.getBytes("UTF-8");
+            exchange.sendResponseHeaders(code, bytes.length);
             OutputStream oStream = exchange.getResponseBody();
-            oStream.write(message.getBytes());
+            oStream.write(response.getBytes());
+            oStream.close();
+        } catch (IOException e) {
+            System.out.print(e.getMessage());
         }
     }
 }
